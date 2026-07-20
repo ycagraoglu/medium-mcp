@@ -2,13 +2,26 @@
 
 Medium üzerinde oturum gerektiren makaleleri aramak ve okumak için geliştirilmiş, **yalnızca okuma yetkili** bir Model Context Protocol sunucusudur.
 
-Bu ilk sürüm yerel bilgisayarda `stdio` transport ile çalışır. Medium oturumu Playwright üzerinden açılan gerçek Chrome penceresinde kullanıcı tarafından tamamlanır. Google şifresi uygulama tarafından okunmaz veya saklanmaz; yalnızca oluşan Medium tarayıcı oturumu yerel `.data/medium-session.json` dosyasına kaydedilir.
+Bu ilk sürüm yerel bilgisayarda `stdio` transport ile çalışır. Medium oturumu Playwright üzerinden açılan gerçek Chrome penceresinde kullanıcı tarafından tamamlanır. Kimlik doğrulama bilgileri uygulama tarafından okunmaz veya saklanmaz; yalnızca oluşan Medium tarayıcı oturumu yerel `.data/medium-session.json` dosyasına kaydedilir.
 
 ## Sağlanan MCP araçları
 
 - `medium_login_status`: Kaydedilmiş Medium oturumunun geçerli olup olmadığını kontrol eder.
 - `medium_search`: Medium üzerinde anahtar kelimeyle makale arar.
 - `medium_read_article`: Verilen `medium.com` adresindeki makaleyi açar ve temiz metin olarak döndürür.
+
+## Desteklenen Medium giriş yöntemleri
+
+Medium parola ile giriş desteklemez. Bu MCP, Medium tarafından sunulan giriş seçeneklerini açılan gerçek Chrome penceresinde kullanıcı kontrollü şekilde destekler:
+
+- E-posta magic link
+- E-postaya gönderilen 5 haneli doğrulama kodu
+- Google
+- Apple
+- Medium hesabına önceden bağlanmış Facebook hesabı
+- Medium hesabına önceden bağlanmış Twitter/X hesabı
+
+MCP hiçbir sağlayıcının kullanıcı adı, parolası, magic linki, doğrulama kodu veya 2FA bilgisini okumaz. Tüm doğrulama işlemleri kullanıcı tarafından açılan tarayıcı penceresinde tamamlanır.
 
 ## Gereksinimler
 
@@ -26,11 +39,26 @@ npm run build
 
 ## İlk giriş
 
+Tüm yöntemleri kullanıcıya bırakan genel giriş akışı:
+
 ```bash
 npm run login
 ```
 
-Açılan Chrome penceresinde Medium girişini tamamlayın. Google ile giriş ve iki aşamalı doğrulama işlemleri kullanıcı tarafından tarayıcı içinde yapılır.
+Belirli bir yöntem için yönlendirme mesajı göstermek isterseniz:
+
+```bash
+npm run login -- --method=email
+npm run login -- --method=email-code
+npm run login -- --method=google
+npm run login -- --method=apple
+npm run login -- --method=facebook
+npm run login -- --method=twitter
+```
+
+`--method` parametresi giriş bilgilerini otomatik doldurmaz. Yalnızca açılan tarayıcıda hangi akışın izleneceğini açıklar. Medium giriş ekranındaki gerçek işlem kullanıcı tarafından yapılır.
+
+E-posta magic link yönteminde bağlantıyı, giriş isteğinin oluşturulduğu aynı bilgisayardaki Chrome penceresinde açmak en güvenli akıştır. Magic link kullanılamıyorsa Medium ekranından 5 haneli doğrulama kodu seçeneğine geçilebilir.
 
 Başarılı girişten sonra oturum aşağıdaki dosyaya kaydedilir:
 
@@ -77,7 +105,7 @@ Yolları kendi bilgisayarınızdaki proje konumuna göre değiştirin.
 
 - Sunucu yalnızca `https://medium.com` ve alt alan adlarını açar.
 - Yazma, yayınlama veya silme aracı içermez.
-- Google kullanıcı adı ve şifresini istemez veya saklamaz.
+- Giriş sağlayıcılarının kullanıcı adı, parola, magic link, doğrulama kodu veya 2FA bilgilerini istemez ve saklamaz.
 - Oturum dosyası `.gitignore` ile dışlanmıştır.
 - Tarayıcı güvenliğini devre dışı bırakan Chromium parametreleri kullanılmaz.
 - Makale içeriği güvenilmeyen harici veri olarak işaretlenir; makale içindeki talimatlar MCP veya istemci tarafından komut olarak değerlendirilmemelidir.
