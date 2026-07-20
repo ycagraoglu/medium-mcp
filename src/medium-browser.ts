@@ -32,31 +32,14 @@ export class MediumBrowserClient {
 
   async login(): Promise<string> {
     await mkdir(PROFILE_DIR, { recursive: true });
-    const edgeExecutable = await findEdgeExecutable();
-
-    const child = spawn(
-      edgeExecutable,
-      [
-        `--user-data-dir=${PROFILE_DIR}`,
-        "--no-first-run",
-        "--no-default-browser-check",
-        MEDIUM_SIGN_IN,
-      ],
-      {
-        detached: true,
-        stdio: "ignore",
-        windowsHide: false,
-      },
-    );
-
-    child.unref();
+    await ensureDebugEdgeRunning(MEDIUM_SIGN_IN);
 
     return [
-      "Medium giriş sayfası normal Microsoft Edge sürecinde açıldı.",
-      "Continue with Google seçeneğini kullanarak giriş işlemini kendiniz tamamlayın.",
+      "Medium giriş sayfası normal Microsoft Edge penceresinde açıldı.",
+      "Continue with Google seçeneğini kullanarak giriş işlemini tamamlayın.",
       "Cloudflare doğrulaması çıkarsa normal şekilde tamamlayın.",
-      "Medium ana sayfasında profilinizi gördükten sonra bu Edge penceresini tamamen kapatın.",
-      "Daha sonra terminale dönüp ENTER tuşuna basın.",
+      "Medium ana sayfasında profilinizi gördükten sonra Edge penceresini KAPATMAYIN.",
+      "Terminale dönüp ENTER tuşuna basın.",
       "Oturum .data/medium-profile klasöründe saklanacaktır.",
     ].join("\n");
   }
@@ -67,7 +50,7 @@ export class MediumBrowserClient {
     }
 
     await mkdir(PROFILE_DIR, { recursive: true });
-    await ensureDebugEdgeRunning();
+    await ensureDebugEdgeRunning(MEDIUM_HOME);
 
     this.browser = await chromium.connectOverCDP(CDP_ENDPOINT);
     this.context = this.browser.contexts()[0] ?? null;
@@ -84,7 +67,7 @@ export class MediumBrowserClient {
   }
 
   async close(): Promise<void> {
-    // Do not close the real Edge process. Disconnect local references only.
+    await this.browser?.close().catch(() => undefined);
     this.browser = null;
     this.context = null;
     this.page = null;
@@ -93,7 +76,7 @@ export class MediumBrowserClient {
   async checkSession(): Promise<{ loggedIn: boolean; url: string }> {
     const page = await this.getPage();
     await page.goto(MEDIUM_HOME, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
 
     const loggedIn = await page.evaluate(() => {
       const selectors = [
@@ -267,7 +250,7 @@ export class MediumBrowserClient {
   }
 }
 
-async function ensureDebugEdgeRunning(): Promise<void> {
+async function ensureDebugEdgeRunning(initialUrl: string): Promise<void> {
   if (await isCdpReady()) {
     return;
   }
@@ -277,10 +260,14 @@ async function ensureDebugEdgeRunning(): Promise<void> {
     edgeExecutable,
     [
       `--remote-debugging-port=${CDP_PORT}`,
+      "--remote-debugging-address=127.0.0.1",
+      "--remote-allow-origins=*",
       `--user-data-dir=${PROFILE_DIR}`,
+      "--new-window",
       "--no-first-run",
       "--no-default-browser-check",
-      MEDIUM_HOME,
+      "--disable-background-mode",
+      initialUrl,
     ],
     {
       detached: true,
@@ -291,7 +278,7 @@ async function ensureDebugEdgeRunning(): Promise<void> {
 
   child.unref();
 
-  const deadline = Date.now() + 20_000;
+  const deadline = Date.now() + 30_000;
   while (Date.now() < deadline) {
     if (await isCdpReady()) {
       return;
@@ -301,14 +288,14 @@ async function ensureDebugEdgeRunning(): Promise<void> {
   }
 
   throw new Error(
-    "Microsoft Edge started but its debugging endpoint did not become available. Close all Edge windows using the Medium profile and try again.",
+    `Edge debugging endpoint could not be opened at ${CDP_ENDPOINT}. Close every Edge window that uses .data/medium-profile, then run npm run login again.`,
   );
 }
 
 async function isCdpReady(): Promise<boolean> {
   try {
     const response = await fetch(`${CDP_ENDPOINT}/json/version`, {
-      signal: AbortSignal.timeout(1000),
+      signal: AbortSignal.timeout(1500),
     });
     return response.ok;
   } catch {
