@@ -55,14 +55,19 @@ export class MediumBrowserClient {
   }
 
   async login(): Promise<string> {
+    if (process.env.MEDIUM_HEADLESS === "true") {
+      throw new Error("Google ile ilk giriş için MEDIUM_HEADLESS kapalı olmalıdır.");
+    }
+
     const page = await this.getPage();
     await page.goto(MEDIUM_SIGN_IN, { waitUntil: "domcontentloaded" });
 
     return [
-      "Medium giriş sayfası açıldı.",
-      "Google ile giriş kullanmayın.",
-      "Medium'un e-posta ile giriş seçeneğini kullanarak giriş işlemini tarayıcıda tamamlayın.",
-      "Oturum bu projeye özel .data/medium-profile klasöründe otomatik olarak saklanacaktır.",
+      "Medium giriş sayfası gerçek Microsoft Edge penceresinde açıldı.",
+      "Continue with Google seçeneğini kullanarak giriş işlemini kendiniz tamamlayın.",
+      "Bu proje Google kullanıcı adınızı, parolanızı veya doğrulama kodunuzu okumaz.",
+      "Başarılı oturum bu projeye özel .data/medium-profile klasöründe kalıcı olarak saklanacaktır.",
+      "Sonraki MCP çağrıları aynı Edge profilini yeniden kullanacaktır.",
     ].join("\n");
   }
 
