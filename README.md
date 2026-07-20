@@ -6,8 +6,9 @@ Bu proje:
 
 - MCP istemcileriyle `stdio` üzerinden çalışır.
 - Ayrı bir React uygulaması veya tarayıcı eklentisi kullanmaz.
-- Playwright ile projeye özel kalıcı bir Edge profili açar.
-- Google girişini desteklemez; Medium'un e-posta ile giriş akışı kullanılmalıdır.
+- Playwright ile projeye özel kalıcı bir Microsoft Edge profili açar.
+- Medium hesabına Google ile manuel giriş yapılmasını destekler.
+- Google kullanıcı adı, parola veya doğrulama kodlarını okumaz ve saklamaz.
 - Oturumu `.data/medium-profile` klasöründe yerel olarak saklar.
 - Makale içeriğini Markdown olarak MCP istemcisine döndürür.
 
@@ -34,12 +35,15 @@ Playwright, varsayılan olarak bilgisayarınızda kurulu Microsoft Edge'i `msedg
 npm run login
 ```
 
-Açılan pencerede:
+Açılan gerçek Edge penceresinde:
 
-1. Google ile giriş seçeneğini kullanmayın.
-2. Medium'un e-posta ile giriş seçeneğini seçin.
-3. Giriş işlemini tamamlayın.
-4. Terminale dönüp ENTER'a basın.
+1. `Continue with Google` seçeneğine basın.
+2. Google hesabınızla giriş işlemini kendiniz tamamlayın.
+3. İki aşamalı doğrulama çıkarsa normal şekilde tamamlayın.
+4. Medium ana sayfasında hesabınızın açıldığını gördükten sonra terminale dönün.
+5. ENTER tuşuna basın.
+
+Sistem Google girişini otomatikleştirmez. Yalnızca sizin manuel giriş yaptığınız Edge profilini kalıcı olarak tekrar kullanır.
 
 Oturum şu klasörde saklanır:
 
@@ -47,7 +51,7 @@ Oturum şu klasörde saklanır:
 .data/medium-profile
 ```
 
-Bu klasör Git'e gönderilmez. Hesap oturumunu sıfırlamak için Edge ve MCP süreçlerini kapattıktan sonra klasörü silebilirsiniz.
+Bu klasör Git'e gönderilmez. İçinde tarayıcı çerezleri ve yerel oturum bilgileri bulunduğu için paylaşılmamalıdır. Hesap oturumunu sıfırlamak için Edge ve MCP süreçlerini kapattıktan sonra klasörü silebilirsiniz.
 
 ## MCP istemcisi yapılandırması
 
@@ -73,7 +77,7 @@ Windows yollarında `/` kullanmak JSON kaçış sorunlarını önler:
 
 ### `login_to_medium`
 
-Medium giriş sayfasını kalıcı tarayıcı profilinde açar. İnteraktif ilk kurulum için terminaldeki `npm run login` komutu daha uygundur.
+Medium giriş sayfasını kalıcı Edge profilinde açar. Google ile giriş görünür tarayıcı penceresinde kullanıcı tarafından tamamlanır. İlk kurulum için terminaldeki `npm run login` komutu daha uygundur.
 
 ### `check_medium_session`
 
@@ -108,12 +112,14 @@ Arka planda çalıştırmayı denemek için:
 $env:MEDIUM_HEADLESS="true"
 ```
 
-İlk giriş ve sorun giderme sırasında görünür tarayıcı önerilir.
+İlk Google girişi sırasında `MEDIUM_HEADLESS` kullanılmamalıdır. İlk oturum açıldıktan sonra headless çalışma denenebilir; Medium veya Google davranışı değişirse görünür Edge kullanmak daha güvenilirdir.
 
 ## Güvenlik ve sınırlar
 
 - Proje şifre toplamaz veya dış sunucuya göndermez.
+- Google giriş formu doğrudan Google ve Edge arasında çalışır.
 - Medium oturumu yalnızca yerel tarayıcı profilinde tutulur.
+- `.data/medium-profile` klasörü kişisel ve hassas kabul edilmelidir.
 - Yalnızca `https://medium.com` ve Medium alt alan adları kabul edilir.
 - Medium arayüzü değişirse DOM seçicilerinin güncellenmesi gerekebilir.
 - Erişim yetkisi olmayan üye içeriklerinin kilidini açmaz; yalnızca hesabınızın görüntüleyebildiği içeriği okur.
