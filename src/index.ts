@@ -21,7 +21,7 @@ server.registerTool(
     const result = await medium.getLoginStatus();
     return {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      structuredContent: result
+      structuredContent: { ...result }
     };
   }
 );
@@ -58,7 +58,7 @@ server.registerTool(
     const article = await medium.readArticle(url);
     return {
       content: [{ type: "text", text: JSON.stringify(article, null, 2) }],
-      structuredContent: article
+      structuredContent: { ...article }
     };
   }
 );
