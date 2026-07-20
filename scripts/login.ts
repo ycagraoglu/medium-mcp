@@ -4,7 +4,6 @@ import { config } from "../src/config.js";
 type AuthMethod =
   | "auto"
   | "email"
-  | "email-code"
   | "google"
   | "apple"
   | "facebook"
@@ -13,7 +12,6 @@ type AuthMethod =
 const supportedMethods = new Set<AuthMethod>([
   "auto",
   "email",
-  "email-code",
   "google",
   "apple",
   "facebook",
@@ -37,21 +35,17 @@ function printLoginInstructions(method: AuthMethod): void {
   console.log("Opening Medium sign-in page in a real Chrome window...");
   console.log("Choose and complete the sign-in method yourself in the opened browser.");
   console.log("");
-  console.log("Supported Medium sign-in methods:");
-  console.log("- Email magic link");
-  console.log("- Email 5-digit verification code");
+  console.log("Medium sign-in options shown on the login screen:");
   console.log("- Google");
+  console.log("- Facebook");
   console.log("- Apple");
-  console.log("- Connected Facebook account");
-  console.log("- Connected Twitter/X account");
+  console.log("- X");
+  console.log("- Email");
   console.log("");
 
   switch (method) {
     case "email":
-      console.log("Selected guidance: choose 'Sign in with email' and open Medium's magic link from your inbox.");
-      break;
-    case "email-code":
-      console.log("Selected guidance: choose email sign-in, then request the 5-digit code if the magic link cannot be used.");
+      console.log("Selected guidance: choose 'Sign in with email' and complete the email verification flow shown by Medium.");
       break;
     case "google":
       console.log("Selected guidance: choose 'Sign in with Google' and complete Google authentication and 2FA manually.");
@@ -60,10 +54,10 @@ function printLoginInstructions(method: AuthMethod): void {
       console.log("Selected guidance: choose 'Sign in with Apple' and complete Apple authentication manually.");
       break;
     case "facebook":
-      console.log("Selected guidance: use Facebook only if that social account is already connected to your Medium account.");
+      console.log("Selected guidance: choose 'Sign in with Facebook' and complete Facebook authentication manually.");
       break;
     case "twitter":
-      console.log("Selected guidance: use Twitter/X only if that social account is already connected to your Medium account.");
+      console.log("Selected guidance: choose 'Sign in with X' and complete X authentication manually.");
       break;
     case "auto":
       console.log("Selected guidance: use any sign-in option offered by Medium for your account.");
@@ -71,7 +65,7 @@ function printLoginInstructions(method: AuthMethod): void {
   }
 
   console.log("");
-  console.log("No password, email code, magic link, or 2FA value is read or stored by this script.");
+  console.log("No password, email verification value, magic link, or 2FA value is read or stored by this script.");
   console.log("Only the resulting Medium browser session is saved locally after login succeeds.");
 }
 
