@@ -37,7 +37,8 @@ export class MediumBrowser {
     this.browser = await chromium.launch({
       headless: config.headless,
       channel: resolvedBrowser.channel,
-      executablePath: resolvedBrowser.executablePath
+      executablePath: resolvedBrowser.executablePath,
+      chromiumSandbox: true
     });
 
     this.context = await this.browser.newContext({
