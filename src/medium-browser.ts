@@ -22,6 +22,7 @@ export interface MediumSearchResult {
 const PROFILE_DIR = path.resolve(process.cwd(), ".data", "medium-profile");
 const MEDIUM_HOME = "https://medium.com/";
 const MEDIUM_SIGN_IN = "https://medium.com/m/signin";
+const MEDIUM_ME = "https://medium.com/me";
 const CDP_PORT = Number(process.env.MEDIUM_CDP_PORT ?? "9222");
 const CDP_ENDPOINT = `http://127.0.0.1:${CDP_PORT}`;
 
@@ -73,23 +74,53 @@ export class MediumBrowserClient {
     this.page = null;
   }
 
-  async checkSession(): Promise<{ loggedIn: boolean; url: string }> {
+  async checkSession(): Promise<{ loggedIn: boolean; url: string; evidence: string[] }> {
     const page = await this.getPage();
-    await page.goto(MEDIUM_HOME, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(2000);
+    const evidence: string[] = [];
 
-    const loggedIn = await page.evaluate(() => {
+    await page.goto(MEDIUM_ME, { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForTimeout(2500);
+
+    const currentUrl = page.url();
+    const currentPath = new URL(currentUrl).pathname.toLowerCase();
+
+    if (!currentPath.includes("signin") && !currentPath.includes("signup")) {
+      evidence.push("/me did not redirect to a sign-in page");
+    }
+
+    if (!this.context) {
+      throw new Error("Browser context is not available.");
+    }
+
+    const cookies = await this.context.cookies([MEDIUM_HOME]);
+    const cookieNames = new Set(cookies.map((cookie) => cookie.name));
+    const authCookieCandidates = ["sid", "uid", "userId", "medium_user"];
+    const matchedCookies = authCookieCandidates.filter((name) => cookieNames.has(name));
+
+    if (matchedCookies.length > 0) {
+      evidence.push(`Medium auth cookie found: ${matchedCookies.join(", ")}`);
+    }
+
+    const domEvidence = await page.evaluate(() => {
       const selectors = [
         '[data-testid="headerUserButton"]',
         'a[href="/me/stories"]',
         'a[href^="/@"][aria-label]',
         'img[alt*="profile" i]',
+        'a[href*="/me/lists"]',
+        'a[href*="/me/settings"]',
       ];
 
-      return selectors.some((selector) => document.querySelector(selector) !== null);
+      return selectors.filter((selector) => document.querySelector(selector) !== null);
     });
 
-    return { loggedIn, url: page.url() };
+    if (domEvidence.length > 0) {
+      evidence.push(`Logged-in DOM element found: ${domEvidence[0]}`);
+    }
+
+    const loggedIn = evidence.length > 0 && !currentPath.includes("signin") && !currentPath.includes("signup");
+
+    return { loggedIn, url: currentUrl, evidence };
   }
 
   async readArticle(url: string): Promise<MediumArticle> {
