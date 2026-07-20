@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Medium MCP Capture",
+  "version": "0.1.0",
+  "description": "Send the Medium article open in your normal browser session to the local Medium MCP server.",
+  "permissions": ["activeTab", "scripting"],
+  "host_permissions": [
+    "https://medium.com/*",
+    "http://127.0.0.1:3210/*"
+  ],
+  "action": {
+    "default_title": "Send article to Medium MCP",
+    "default_popup": "popup.html"
+  }
+}
