@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
+import { resolveBrowser } from "./browser-resolver.js";
 import { config } from "./config.js";
 
 export interface MediumSearchResult {
@@ -31,9 +32,12 @@ export class MediumBrowser {
       throw new Error("Medium session not found. Run `npm run login` first.");
     }
 
+    const resolvedBrowser = resolveBrowser(config.browserChannel);
+
     this.browser = await chromium.launch({
       headless: config.headless,
-      channel: config.browserChannel
+      channel: resolvedBrowser.channel,
+      executablePath: resolvedBrowser.executablePath
     });
 
     this.context = await this.browser.newContext({
