@@ -1,4 +1,4 @@
-import { chromium } from "playwright";
+import { chromium, type Page } from "playwright";
 import { resolveBrowser } from "../src/browser-resolver.js";
 import { config } from "../src/config.js";
 
@@ -63,6 +63,25 @@ function printLoginInstructions(method: AuthMethod, browserName: string): void {
   console.log("Only the resulting Medium browser session is saved locally after login succeeds.");
 }
 
+function attachDiagnostics(page: Page): void {
+  page.on("pageerror", error => {
+    console.error(`[Medium page error] ${error.message}`);
+  });
+
+  page.on("requestfailed", request => {
+    const failure = request.failure();
+    console.error(
+      `[Medium request failed] ${request.method()} ${request.url()}${failure?.errorText ? ` - ${failure.errorText}` : ""}`
+    );
+  });
+
+  page.on("console", message => {
+    if (message.type() === "error") {
+      console.error(`[Medium console] ${message.text()}`);
+    }
+  });
+}
+
 async function main(): Promise<void> {
   const authMethod = getAuthMethod();
   const resolvedBrowser = resolveBrowser(config.browserChannel);
@@ -71,11 +90,17 @@ async function main(): Promise<void> {
     headless: false,
     channel: resolvedBrowser.channel,
     executablePath: resolvedBrowser.executablePath,
-    locale: "en-US"
+    locale: "en-US",
+    chromiumSandbox: true
   });
 
   const existingPages = context.pages();
   const page = existingPages[0] ?? (await context.newPage());
+  attachDiagnostics(page);
+
+  context.on("page", candidatePage => {
+    attachDiagnostics(candidatePage);
+  });
 
   printLoginInstructions(authMethod, resolvedBrowser.name);
 
@@ -119,7 +144,9 @@ async function main(): Promise<void> {
 
   if (!loggedIn) {
     await context.close();
-    throw new Error("Medium login was not detected within 15 minutes.");
+    throw new Error(
+      "Medium login was not detected within 15 minutes. Check the terminal for Medium page, console, or network errors."
+    );
   }
 
   await context.storageState({ path: config.sessionPath });
