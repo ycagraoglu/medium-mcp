@@ -1,4 +1,5 @@
 import { chromium } from "playwright";
+import { resolveBrowser } from "../src/browser-resolver.js";
 import { config } from "../src/config.js";
 
 type AuthMethod =
@@ -31,21 +32,14 @@ function getAuthMethod(): AuthMethod {
   return method;
 }
 
-function printLoginInstructions(method: AuthMethod): void {
-  console.log("Opening Medium sign-in page in a real Chrome window...");
-  console.log("Choose and complete the sign-in method yourself in the opened browser.");
-  console.log("");
-  console.log("Medium sign-in options shown on the login screen:");
-  console.log("- Google");
-  console.log("- Facebook");
-  console.log("- Apple");
-  console.log("- X");
-  console.log("- Email");
+function printLoginInstructions(method: AuthMethod, browserName: string): void {
+  console.log(`Opening Medium sign-in in your default browser: ${browserName}`);
+  console.log("Complete the sign-in yourself in the opened browser window.");
   console.log("");
 
   switch (method) {
     case "email":
-      console.log("Selected guidance: choose 'Sign in with email' and complete the email verification flow shown by Medium.");
+      console.log("Selected guidance: choose 'Sign in with email' and complete Medium's email verification flow.");
       break;
     case "google":
       console.log("Selected guidance: choose 'Sign in with Google' and complete Google authentication and 2FA manually.");
@@ -65,21 +59,25 @@ function printLoginInstructions(method: AuthMethod): void {
   }
 
   console.log("");
-  console.log("No password, email verification value, magic link, or 2FA value is read or stored by this script.");
+  console.log("No password, verification code, magic link, or 2FA value is read or stored by this script.");
   console.log("Only the resulting Medium browser session is saved locally after login succeeds.");
 }
 
 async function main(): Promise<void> {
   const authMethod = getAuthMethod();
-  const browser = await chromium.launch({
+  const resolvedBrowser = resolveBrowser(config.browserChannel);
+
+  const context = await chromium.launchPersistentContext(config.browserProfilePath, {
     headless: false,
-    channel: config.browserChannel
+    channel: resolvedBrowser.channel,
+    executablePath: resolvedBrowser.executablePath,
+    locale: "en-US"
   });
 
-  const context = await browser.newContext({ locale: "en-US" });
-  const page = await context.newPage();
+  const existingPages = context.pages();
+  const page = existingPages[0] ?? (await context.newPage());
 
-  printLoginInstructions(authMethod);
+  printLoginInstructions(authMethod, resolvedBrowser.name);
 
   await page.goto("https://medium.com/m/signin", {
     waitUntil: "domcontentloaded",
@@ -92,9 +90,7 @@ async function main(): Promise<void> {
   while (Date.now() < deadline) {
     await page.waitForTimeout(2_000);
 
-    const pages = context.pages();
-
-    for (const candidatePage of pages) {
+    for (const candidatePage of context.pages()) {
       const currentUrl = candidatePage.url();
       const isMediumPage = currentUrl.startsWith("https://medium.com");
 
@@ -122,15 +118,16 @@ async function main(): Promise<void> {
   }
 
   if (!loggedIn) {
-    await browser.close();
+    await context.close();
     throw new Error("Medium login was not detected within 15 minutes.");
   }
 
   await context.storageState({ path: config.sessionPath });
   console.log(`Medium session saved locally: ${config.sessionPath}`);
-  console.log("Keep this file private. It is excluded from Git by .gitignore.");
+  console.log(`Persistent browser profile: ${config.browserProfilePath}`);
+  console.log("Keep these files private. They are excluded from Git by .gitignore.");
 
-  await browser.close();
+  await context.close();
 }
 
 main().catch(error => {
