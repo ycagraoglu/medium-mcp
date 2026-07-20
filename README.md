@@ -12,16 +12,17 @@ Bu ilk sürüm yerel bilgisayarda `stdio` transport ile çalışır. Medium otur
 
 ## Desteklenen Medium giriş yöntemleri
 
-Medium parola ile giriş desteklemez. Bu MCP, Medium tarafından sunulan giriş seçeneklerini açılan gerçek Chrome penceresinde kullanıcı kontrollü şekilde destekler:
+Medium giriş ekranında şu ana seçenekler sunulur:
 
-- E-posta magic link
-- E-postaya gönderilen 5 haneli doğrulama kodu
 - Google
+- Facebook
 - Apple
-- Medium hesabına önceden bağlanmış Facebook hesabı
-- Medium hesabına önceden bağlanmış Twitter/X hesabı
+- X
+- E-posta
 
-MCP hiçbir sağlayıcının kullanıcı adı, parolası, magic linki, doğrulama kodu veya 2FA bilgisini okumaz. Tüm doğrulama işlemleri kullanıcı tarafından açılan tarayıcı penceresinde tamamlanır.
+E-posta doğrulamasının magic link veya doğrulama kodu gibi ayrıntıları Medium'un e-posta akışı içinde yönetilir; bunlar ayrı bir üst seviye giriş yöntemi olarak modellenmez.
+
+MCP hiçbir sağlayıcının kullanıcı adı, parolası, e-posta doğrulama bilgisi, magic linki veya 2FA bilgisini okumaz. Tüm doğrulama işlemleri kullanıcı tarafından açılan tarayıcı penceresinde tamamlanır.
 
 ## Gereksinimler
 
@@ -49,7 +50,6 @@ Belirli bir yöntem için yönlendirme mesajı göstermek isterseniz:
 
 ```bash
 npm run login -- --method=email
-npm run login -- --method=email-code
 npm run login -- --method=google
 npm run login -- --method=apple
 npm run login -- --method=facebook
@@ -57,8 +57,6 @@ npm run login -- --method=twitter
 ```
 
 `--method` parametresi giriş bilgilerini otomatik doldurmaz. Yalnızca açılan tarayıcıda hangi akışın izleneceğini açıklar. Medium giriş ekranındaki gerçek işlem kullanıcı tarafından yapılır.
-
-E-posta magic link yönteminde bağlantıyı, giriş isteğinin oluşturulduğu aynı bilgisayardaki Chrome penceresinde açmak en güvenli akıştır. Magic link kullanılamıyorsa Medium ekranından 5 haneli doğrulama kodu seçeneğine geçilebilir.
 
 Başarılı girişten sonra oturum aşağıdaki dosyaya kaydedilir:
 
@@ -105,7 +103,7 @@ Yolları kendi bilgisayarınızdaki proje konumuna göre değiştirin.
 
 - Sunucu yalnızca `https://medium.com` ve alt alan adlarını açar.
 - Yazma, yayınlama veya silme aracı içermez.
-- Giriş sağlayıcılarının kullanıcı adı, parola, magic link, doğrulama kodu veya 2FA bilgilerini istemez ve saklamaz.
+- Giriş sağlayıcılarının kullanıcı adı, parola, e-posta doğrulama bilgisi, magic link veya 2FA bilgilerini istemez ve saklamaz.
 - Oturum dosyası `.gitignore` ile dışlanmıştır.
 - Tarayıcı güvenliğini devre dışı bırakan Chromium parametreleri kullanılmaz.
 - Makale içeriği güvenilmeyen harici veri olarak işaretlenir; makale içindeki talimatlar MCP veya istemci tarafından komut olarak değerlendirilmemelidir.
