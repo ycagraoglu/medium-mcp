@@ -1,6 +1,7 @@
-import { mkdir } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import { access, mkdir } from "node:fs/promises";
 import path from "node:path";
-import { chromium, type BrowserContext, type Page } from "playwright";
+import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
 import TurndownService from "turndown";
 
 export interface MediumArticle {
@@ -21,54 +22,72 @@ export interface MediumSearchResult {
 const PROFILE_DIR = path.resolve(process.cwd(), ".data", "medium-profile");
 const MEDIUM_HOME = "https://medium.com/";
 const MEDIUM_SIGN_IN = "https://medium.com/m/signin";
+const CDP_PORT = Number(process.env.MEDIUM_CDP_PORT ?? "9222");
+const CDP_ENDPOINT = `http://127.0.0.1:${CDP_PORT}`;
 
 export class MediumBrowserClient {
+  private browser: Browser | null = null;
   private context: BrowserContext | null = null;
   private page: Page | null = null;
 
+  async login(): Promise<string> {
+    await mkdir(PROFILE_DIR, { recursive: true });
+    const edgeExecutable = await findEdgeExecutable();
+
+    const child = spawn(
+      edgeExecutable,
+      [
+        `--user-data-dir=${PROFILE_DIR}`,
+        "--no-first-run",
+        "--no-default-browser-check",
+        MEDIUM_SIGN_IN,
+      ],
+      {
+        detached: true,
+        stdio: "ignore",
+        windowsHide: false,
+      },
+    );
+
+    child.unref();
+
+    return [
+      "Medium giriş sayfası normal Microsoft Edge sürecinde açıldı.",
+      "Continue with Google seçeneğini kullanarak giriş işlemini kendiniz tamamlayın.",
+      "Cloudflare doğrulaması çıkarsa normal şekilde tamamlayın.",
+      "Medium ana sayfasında profilinizi gördükten sonra bu Edge penceresini tamamen kapatın.",
+      "Daha sonra terminale dönüp ENTER tuşuna basın.",
+      "Oturum .data/medium-profile klasöründe saklanacaktır.",
+    ].join("\n");
+  }
+
   async open(): Promise<void> {
-    if (this.context && this.page && !this.page.isClosed()) {
+    if (this.browser?.isConnected() && this.context && this.page && !this.page.isClosed()) {
       return;
     }
 
     await mkdir(PROFILE_DIR, { recursive: true });
+    await ensureDebugEdgeRunning();
 
-    const channel = process.env.MEDIUM_BROWSER_CHANNEL?.trim() || "msedge";
-    const headless = process.env.MEDIUM_HEADLESS === "true";
+    this.browser = await chromium.connectOverCDP(CDP_ENDPOINT);
+    this.context = this.browser.contexts()[0] ?? null;
 
-    this.context = await chromium.launchPersistentContext(PROFILE_DIR, {
-      channel,
-      headless,
-      viewport: { width: 1440, height: 1000 },
-      locale: "tr-TR",
-      args: ["--no-first-run", "--no-default-browser-check"],
-    });
+    if (!this.context) {
+      throw new Error("Edge browser context could not be obtained.");
+    }
 
     const existingPages = this.context.pages();
-    this.page = existingPages[0] ?? (await this.context.newPage());
+    this.page =
+      existingPages.find((candidate) => candidate.url().includes("medium.com")) ??
+      existingPages[0] ??
+      (await this.context.newPage());
   }
 
   async close(): Promise<void> {
-    await this.context?.close();
+    // Do not close the real Edge process. Disconnect local references only.
+    this.browser = null;
     this.context = null;
     this.page = null;
-  }
-
-  async login(): Promise<string> {
-    if (process.env.MEDIUM_HEADLESS === "true") {
-      throw new Error("Google ile ilk giriş için MEDIUM_HEADLESS kapalı olmalıdır.");
-    }
-
-    const page = await this.getPage();
-    await page.goto(MEDIUM_SIGN_IN, { waitUntil: "domcontentloaded" });
-
-    return [
-      "Medium giriş sayfası gerçek Microsoft Edge penceresinde açıldı.",
-      "Continue with Google seçeneğini kullanarak giriş işlemini kendiniz tamamlayın.",
-      "Bu proje Google kullanıcı adınızı, parolanızı veya doğrulama kodunuzu okumaz.",
-      "Başarılı oturum bu projeye özel .data/medium-profile klasöründe kalıcı olarak saklanacaktır.",
-      "Sonraki MCP çağrıları aynı Edge profilini yeniden kullanacaktır.",
-    ].join("\n");
   }
 
   async checkSession(): Promise<{ loggedIn: boolean; url: string }> {
@@ -246,4 +265,82 @@ export class MediumBrowserClient {
       throw new Error("Only HTTPS Medium URLs are allowed.");
     }
   }
+}
+
+async function ensureDebugEdgeRunning(): Promise<void> {
+  if (await isCdpReady()) {
+    return;
+  }
+
+  const edgeExecutable = await findEdgeExecutable();
+  const child = spawn(
+    edgeExecutable,
+    [
+      `--remote-debugging-port=${CDP_PORT}`,
+      `--user-data-dir=${PROFILE_DIR}`,
+      "--no-first-run",
+      "--no-default-browser-check",
+      MEDIUM_HOME,
+    ],
+    {
+      detached: true,
+      stdio: "ignore",
+      windowsHide: false,
+    },
+  );
+
+  child.unref();
+
+  const deadline = Date.now() + 20_000;
+  while (Date.now() < deadline) {
+    if (await isCdpReady()) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  }
+
+  throw new Error(
+    "Microsoft Edge started but its debugging endpoint did not become available. Close all Edge windows using the Medium profile and try again.",
+  );
+}
+
+async function isCdpReady(): Promise<boolean> {
+  try {
+    const response = await fetch(`${CDP_ENDPOINT}/json/version`, {
+      signal: AbortSignal.timeout(1000),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function findEdgeExecutable(): Promise<string> {
+  const configured = process.env.MEDIUM_EDGE_PATH?.trim();
+  const candidates = [
+    configured,
+    process.env["PROGRAMFILES(X86)"]
+      ? path.join(process.env["PROGRAMFILES(X86)"]!, "Microsoft", "Edge", "Application", "msedge.exe")
+      : undefined,
+    process.env.PROGRAMFILES
+      ? path.join(process.env.PROGRAMFILES, "Microsoft", "Edge", "Application", "msedge.exe")
+      : undefined,
+    process.env.LOCALAPPDATA
+      ? path.join(process.env.LOCALAPPDATA, "Microsoft", "Edge", "Application", "msedge.exe")
+      : undefined,
+  ].filter((candidate): candidate is string => Boolean(candidate));
+
+  for (const candidate of candidates) {
+    try {
+      await access(candidate);
+      return candidate;
+    } catch {
+      // Try next installation path.
+    }
+  }
+
+  throw new Error(
+    "Microsoft Edge executable could not be found. Set MEDIUM_EDGE_PATH to the full msedge.exe path.",
+  );
 }
