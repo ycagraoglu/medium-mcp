@@ -8,7 +8,7 @@ const server = new McpServer({ name: "medium-mcp", version: "1.0.0" });
 
 server.tool(
   "login_to_medium",
-  "Open Medium's sign-in page in the dedicated browser profile. Use Medium email sign-in; Google sign-in is intentionally unsupported.",
+  "Open Medium's sign-in page in a dedicated persistent Microsoft Edge profile. The user can complete Google sign-in manually in the visible browser window.",
   {},
   async () => {
     try {
