@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+
+# Medium authentication state - never commit
+.data/
+medium-session.json
+
+# Playwright output
+playwright-report/
+test-results/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
