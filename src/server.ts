@@ -30,7 +30,7 @@ app.use((_request, response, next) => {
   next();
 });
 
-app.options("*", (_request, response) => response.sendStatus(204));
+app.options(/.*/, (_request, response) => response.sendStatus(204));
 
 app.get("/health", (_request: Request, response: Response) => {
   response.json({ ok: true, articleCount: articles.size });
