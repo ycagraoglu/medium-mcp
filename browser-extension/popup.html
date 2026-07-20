@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Medium MCP</title>
+    <style>
+      body { font-family: system-ui, sans-serif; width: 300px; margin: 0; padding: 16px; color: #1f2937; }
+      h1 { font-size: 18px; margin: 0 0 8px; }
+      p { font-size: 13px; line-height: 1.45; margin: 0 0 14px; color: #4b5563; }
+      button { width: 100%; border: 0; border-radius: 8px; padding: 11px 12px; font-weight: 600; cursor: pointer; background: #111827; color: white; }
+      button:disabled { cursor: wait; opacity: .65; }
+      #status { margin-top: 12px; min-height: 20px; font-size: 12px; }
+      .success { color: #047857; }
+      .error { color: #b91c1c; }
+    </style>
+  </head>
+  <body>
+    <h1>Medium MCP</h1>
+    <p>Normal Edge oturumunda açık olan Medium makalesini yerel MCP sunucusuna gönderir.</p>
+    <button id="capture" type="button">Bu makaleyi aktar</button>
+    <div id="status" role="status"></div>
+    <script src="popup.js"></script>
+  </body>
+</html>
