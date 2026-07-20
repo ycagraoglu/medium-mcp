@@ -1,0 +1,27 @@
+{
+  "name": "medium-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Read-only MCP server for authenticated Medium search and article reading.",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/src/index.js",
+    "login": "tsx scripts/login.ts",
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "latest",
+    "playwright": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "tsx": "latest",
+    "typescript": "latest"
+  }
+}
